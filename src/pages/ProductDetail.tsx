@@ -1,12 +1,43 @@
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { mockProducts } from "../data/mockProducts";
 import { useCartStore } from "../store/cartStore";
+import { getProductById } from "../services/productService";
+import type{ Product } from "../types/Product";
 
 export function ProductDetail() {
   const { id } = useParams();
   const addToCart = useCartStore((state) => state.addToCart);
 
-  const product = mockProducts.find((item) => item.id === id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (!id) return;
+
+    async function loadProduct() {
+      try {
+        setLoading(true);
+        const data = await getProductById(id!);
+        setProduct(data);
+      } catch (error) {
+        console.error(error);
+        setErrorMessage("No se pudo cargar el producto.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProduct();
+  }, [id]);
+
+  if (loading) {
+    return <p>Cargando producto...</p>;
+  }
+
+  if (errorMessage) {
+    return <p>{errorMessage}</p>;
+  }
 
   if (!product) {
     return <p>Producto no encontrado.</p>;
@@ -27,21 +58,19 @@ export function ProductDetail() {
           <strong>Categoría:</strong> {product.category}
         </p>
         <p>
-          <strong>Material:</strong> {product.material}
+          <strong>Material:</strong> {product.material || "-"}
         </p>
         <p>
-          <strong>Color:</strong> {product.color}
+          <strong>Color:</strong> {product.color || "-"}
         </p>
         <p>
-          <strong>Medidas:</strong> {product.dimensions}
+          <strong>Medidas:</strong> {product.dimensions || "-"}
         </p>
         <p>
           <strong>Stock:</strong> {product.stock}
         </p>
 
-        <button onClick={() => addToCart(product)}>
-          Agregar al carrito
-        </button>
+        <button onClick={() => addToCart(product)}>Agregar al carrito</button>
       </div>
     </section>
   );

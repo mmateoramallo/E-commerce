@@ -6,7 +6,7 @@ export function Cart() {
   const clearCart = useCartStore((state) => state.clearCart);
   const totalPrice = useCartStore((state) => state.getTotalPrice());
 
-  const sellerPhone = "+5493515640277";
+  const sellerPhone = import.meta.env.VITE_SELLER_WHATSAPP ?? "5493515640277";
 
   const handleWhatsAppOrder = () => {
     const message = items
