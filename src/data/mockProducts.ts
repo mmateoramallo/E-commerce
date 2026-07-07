@@ -1,0 +1,40 @@
+import type { Product } from "../types/Product";
+
+export const mockProducts: Product[] = [
+  {
+    id: "1",
+    name: "Mesa ratona de madera",
+    description: "Mesa ratona artesanal de madera maciza, ideal para living.",
+    price: 85000,
+    category: "Mesas",
+    material: "Madera",
+    color: "Natural",
+    dimensions: "90 x 50 x 45 cm",
+    stock: 3,
+    imageUrl: "https://placehold.co/600x400?text=Mesa+Ratona",
+  },
+  {
+    id: "2",
+    name: "Silla nórdica blanca",
+    description: "Silla moderna estilo nórdico, cómoda y resistente.",
+    price: 42000,
+    category: "Sillas",
+    material: "Madera y plástico",
+    color: "Blanco",
+    dimensions: "80 x 45 x 45 cm",
+    stock: 8,
+    imageUrl: "https://placehold.co/600x400?text=Silla+Nordica",
+  },
+  {
+    id: "3",
+    name: "Estantería industrial",
+    description: "Estantería con estructura metálica y estantes de madera.",
+    price: 130000,
+    category: "Estanterías",
+    material: "Hierro y madera",
+    color: "Negro y madera",
+    dimensions: "180 x 80 x 35 cm",
+    stock: 2,
+    imageUrl: "https://placehold.co/600x400?text=Estanteria",
+  },
+];
