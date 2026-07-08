@@ -1,5 +1,11 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { supabase } from "../lib/supabase";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import {
   createProduct,
   deleteProduct,
@@ -42,12 +48,16 @@ export function AdminProducts() {
 
   const [form, setForm] = useState<ProductFormState>(emptyForm);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(
+    null
+  );
 
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,7 +127,10 @@ export function AdminProducts() {
     );
   }, [filteredProducts]);
 
-  const activeProductsCount = products.filter((product) => product.active).length;
+  const activeProductsCount = products.filter(
+    (product) => product.active
+  ).length;
+
   const inactiveProductsCount = products.length - activeProductsCount;
 
   function handleInputChange(
@@ -136,6 +149,14 @@ export function AdminProducts() {
     setImageFile(file);
   }
 
+  function resetImageInput() {
+    setImageFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   function buildProductInput(): ProductFormInput {
     return {
       name: form.name.trim(),
@@ -152,8 +173,12 @@ export function AdminProducts() {
   function validateForm() {
     if (!form.name.trim()) return "Ingresá el nombre del producto.";
     if (!form.description.trim()) return "Ingresá una descripción.";
-    if (!form.price || Number(form.price) < 0) return "Ingresá un precio válido.";
-    if (!form.stock || Number(form.stock) < 0) return "Ingresá un stock válido.";
+    if (!form.price || Number(form.price) < 0) {
+      return "Ingresá un precio válido.";
+    }
+    if (!form.stock || Number(form.stock) < 0) {
+      return "Ingresá un stock válido.";
+    }
 
     return "";
   }
@@ -188,8 +213,8 @@ export function AdminProducts() {
       }
 
       setForm(emptyForm);
-      setImageFile(null);
       setEditingProduct(null);
+      resetImageInput();
 
       await refreshProducts();
     } catch (error) {
@@ -206,7 +231,7 @@ export function AdminProducts() {
 
   function handleEditProduct(product: AdminProduct) {
     setEditingProduct(product);
-    setImageFile(null);
+    resetImageInput();
     setMessage("");
 
     setForm({
@@ -228,8 +253,8 @@ export function AdminProducts() {
 
   function handleCancelEdit() {
     setEditingProduct(null);
-    setImageFile(null);
     setForm(emptyForm);
+    resetImageInput();
     setMessage("");
   }
 
@@ -273,11 +298,6 @@ export function AdminProducts() {
     }
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    window.location.href = "/admin/login";
-  }
-
   return (
     <section className="admin-page">
       <header className="admin-topbar">
@@ -286,10 +306,6 @@ export function AdminProducts() {
           <h1>Panel de productos</h1>
           <p>Gestioná el catálogo, editá productos y controlá su visibilidad.</p>
         </div>
-
-        <button className="secondary-button small-button" onClick={handleLogout}>
-          Cerrar sesión
-        </button>
       </header>
 
       <div className="admin-stats">
@@ -440,20 +456,38 @@ export function AdminProducts() {
               />
             </label>
 
-            <label>
-              {editingProduct ? "Reemplazar imagen principal" : "Imagen principal"}
-              <input type="file" accept="image/*" onChange={handleImageChange} />
-            </label>
+            <div className="file-field">
+              <span className="file-field-label">
+                {editingProduct
+                  ? "Reemplazar imagen principal"
+                  : "Imagen principal"}
+              </span>
 
-            {imageFile && (
-              <p className="selected-file">
-                Imagen seleccionada: <strong>{imageFile.name}</strong>
-              </p>
-            )}
+              <label className="file-upload-box">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+
+                <span className="file-upload-button">Seleccionar imagen</span>
+
+                <span className="file-upload-text">
+                  {imageFile
+                    ? imageFile.name
+                    : "Ningún archivo seleccionado"}
+                </span>
+              </label>
+            </div>
 
             {message && <p className="admin-message">{message}</p>}
 
-            <button className="primary-admin-button" type="submit" disabled={loading}>
+            <button
+              className="primary-admin-button"
+              type="submit"
+              disabled={loading}
+            >
               {loading
                 ? "Guardando..."
                 : editingProduct
@@ -501,6 +535,7 @@ export function AdminProducts() {
                       <article key={product.id} className="admin-product-card">
                         <div className="admin-product-image">
                           <img src={product.imageUrl} alt={product.name} />
+
                           <span
                             className={
                               product.active
@@ -536,7 +571,9 @@ export function AdminProducts() {
                           <div className="admin-product-details">
                             {product.material && <span>{product.material}</span>}
                             {product.color && <span>{product.color}</span>}
-                            {product.dimensions && <span>{product.dimensions}</span>}
+                            {product.dimensions && (
+                              <span>{product.dimensions}</span>
+                            )}
                           </div>
 
                           <div className="admin-product-actions">
