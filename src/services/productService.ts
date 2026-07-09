@@ -1,10 +1,15 @@
 import { supabase } from "../lib/supabase";
-import type { Product } from "../types/Product";
+import type { Product, ProductImage } from "../types/Product";
+
+type CategoryRelation = { name: string } | { name: string }[] | null;
 
 type ProductImageRow = {
+  id: string;
+  product_id: string;
+  image_path: string;
   image_url: string;
-  position: number;
-  is_cover: boolean;
+  position: number | null;
+  is_cover: boolean | null;
 };
 
 type ProductRow = {
@@ -12,36 +17,63 @@ type ProductRow = {
   name: string;
   description: string | null;
   price: number | string;
-  stock: number;
+  category_id: string | null;
   material: string | null;
   color: string | null;
   dimensions: string | null;
-  categories: {
-    name: string;
-  }[] | null;
+  stock: number;
+  categories: CategoryRelation;
   product_images: ProductImageRow[];
 };
 
-function mapProduct(row: ProductRow): Product {
-  const sortedImages = [...(row.product_images ?? [])].sort((a, b) => {
-    if (a.is_cover && !b.is_cover) return -1;
-    if (!a.is_cover && b.is_cover) return 1;
-    return a.position - b.position;
-  });
+function getCategoryName(categoryRelation: CategoryRelation) {
+  if (!categoryRelation) return "Sin categoría";
 
-  const coverImage = sortedImages[0]?.image_url;
+  if (Array.isArray(categoryRelation)) {
+    return categoryRelation[0]?.name ?? "Sin categoría";
+  }
+
+  return categoryRelation.name ?? "Sin categoría";
+}
+
+function mapProductImage(row: ProductImageRow): ProductImage {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    imagePath: row.image_path,
+    imageUrl: row.image_url,
+    position: row.position ?? 0,
+    isCover: row.is_cover ?? false,
+  };
+}
+
+function getCoverImage(images: ProductImage[]) {
+  return (
+    images.find((image) => image.isCover) ??
+    images.sort((a, b) => a.position - b.position)[0] ??
+    null
+  );
+}
+
+function mapProduct(row: ProductRow): Product {
+  const images = (row.product_images ?? [])
+    .map(mapProductImage)
+    .sort((a, b) => a.position - b.position);
+
+  const coverImage = getCoverImage(images);
 
   return {
     id: row.id,
     name: row.name,
     description: row.description ?? "",
     price: Number(row.price),
-    category: row.categories?.[0]?.name ?? "Sin categoría",
+    category: getCategoryName(row.categories),
     material: row.material ?? "",
     color: row.color ?? "",
     dimensions: row.dimensions ?? "",
     stock: row.stock,
-    imageUrl: coverImage ?? "https://placehold.co/600x400?text=Sin+Imagen",
+    imageUrl: coverImage?.imageUrl ?? "",
+    images,
   };
 }
 
@@ -54,14 +86,18 @@ export async function getActiveProducts(): Promise<Product[]> {
       name,
       description,
       price,
-      stock,
+      category_id,
       material,
       color,
       dimensions,
+      stock,
       categories (
         name
       ),
       product_images (
+        id,
+        product_id,
+        image_path,
         image_url,
         position,
         is_cover
@@ -75,10 +111,12 @@ export async function getActiveProducts(): Promise<Product[]> {
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => mapProduct(row as ProductRow));
+  return (data ?? []).map((product) =>
+    mapProduct(product as unknown as ProductRow)
+  );
 }
 
-export async function getProductById(id: string): Promise<Product | null> {
+export async function getProductById(productId: string): Promise<Product | null> {
   const { data, error } = await supabase
     .from("products")
     .select(
@@ -87,30 +125,33 @@ export async function getProductById(id: string): Promise<Product | null> {
       name,
       description,
       price,
-      stock,
+      category_id,
       material,
       color,
       dimensions,
+      stock,
       categories (
         name
       ),
       product_images (
+        id,
+        product_id,
+        image_path,
         image_url,
         position,
         is_cover
       )
     `
     )
-    .eq("id", id)
+    .eq("id", productId)
+    .eq("active", true)
     .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  if (!data) {
-    return null;
-  }
+  if (!data) return null;
 
-  return mapProduct(data as ProductRow);
+  return mapProduct(data as unknown as ProductRow);
 }

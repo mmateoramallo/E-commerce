@@ -5,6 +5,15 @@ export type Category = {
   name: string;
 };
 
+export type ProductImage = {
+  id: string;
+  productId: string;
+  imagePath: string;
+  imageUrl: string;
+  position: number;
+  isCover: boolean;
+};
+
 export type AdminProduct = {
   id: string;
   name: string;
@@ -19,6 +28,7 @@ export type AdminProduct = {
   dimensions: string;
   imageUrl: string;
   imagePath: string;
+  images: ProductImage[];
   createdAt: string;
 };
 
@@ -33,21 +43,16 @@ export type ProductFormInput = {
   dimensions: string;
 };
 
-type ProductImageRow = {
-  image_url: string;
-  image_path: string;
-  position: number;
-  is_cover: boolean;
-};
+type CategoryRelation = { name: string } | { name: string }[] | null;
 
-type CategoryRelation =
-  | {
-      name: string;
-    }
-  | {
-      name: string;
-    }[]
-  | null;
+type ProductImageRow = {
+  id: string;
+  product_id: string;
+  image_path: string;
+  image_url: string;
+  position: number | null;
+  is_cover: boolean | null;
+};
 
 type AdminProductRow = {
   id: string;
@@ -65,20 +70,10 @@ type AdminProductRow = {
   product_images: ProductImageRow[];
 };
 
-function getCoverImage(images: ProductImageRow[] = []) {
-  const sortedImages = [...images].sort((a, b) => {
-    if (a.is_cover && !b.is_cover) return -1;
-    if (!a.is_cover && b.is_cover) return 1;
-    return a.position - b.position;
-  });
-
-  return sortedImages[0];
-}
+const PRODUCT_IMAGES_BUCKET = "product-images";
 
 function getCategoryName(categoryRelation: CategoryRelation) {
-  if (!categoryRelation) {
-    return "Sin categoría";
-  }
+  if (!categoryRelation) return "Sin categoría";
 
   if (Array.isArray(categoryRelation)) {
     return categoryRelation[0]?.name ?? "Sin categoría";
@@ -87,8 +82,37 @@ function getCategoryName(categoryRelation: CategoryRelation) {
   return categoryRelation.name ?? "Sin categoría";
 }
 
+function normalizeImageFiles(files?: File | File[] | null): File[] {
+  if (!files) return [];
+  if (Array.isArray(files)) return files;
+  return [files];
+}
+
+function mapProductImage(row: ProductImageRow): ProductImage {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    imagePath: row.image_path,
+    imageUrl: row.image_url,
+    position: row.position ?? 0,
+    isCover: row.is_cover ?? false,
+  };
+}
+
+function getCoverImage(images: ProductImage[]) {
+  return (
+    images.find((image) => image.isCover) ??
+    images.sort((a, b) => a.position - b.position)[0] ??
+    null
+  );
+}
+
 function mapAdminProduct(row: AdminProductRow): AdminProduct {
-  const coverImage = getCoverImage(row.product_images);
+  const images = (row.product_images ?? [])
+    .map(mapProductImage)
+    .sort((a, b) => a.position - b.position);
+
+  const coverImage = getCoverImage(images);
 
   return {
     id: row.id,
@@ -102,9 +126,9 @@ function mapAdminProduct(row: AdminProductRow): AdminProduct {
     material: row.material ?? "",
     color: row.color ?? "",
     dimensions: row.dimensions ?? "",
-    imageUrl:
-      coverImage?.image_url ?? "https://placehold.co/600x400?text=Sin+Imagen",
-    imagePath: coverImage?.image_path ?? "",
+    imageUrl: coverImage?.imageUrl ?? "",
+    imagePath: coverImage?.imagePath ?? "",
+    images,
     createdAt: row.created_at,
   };
 }
@@ -142,8 +166,10 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
         name
       ),
       product_images (
-        image_url,
+        id,
+        product_id,
         image_path,
+        image_url,
         position,
         is_cover
       )
@@ -155,63 +181,89 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
     throw new Error(error.message);
   }
 
-return (data ?? []).map((product) =>
-  mapAdminProduct(product as unknown as AdminProductRow)
-);
+  return (data ?? []).map((product) =>
+    mapAdminProduct(product as unknown as AdminProductRow)
+  );
 }
 
-async function uploadProductImage(file: File) {
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${crypto.randomUUID()}.${fileExt}`;
-  const filePath = `products/${fileName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("product-images")
-    .upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    throw new Error(uploadError.message);
-  }
-
-  const { data } = supabase.storage
-    .from("product-images")
-    .getPublicUrl(filePath);
-
-  return {
-    imagePath: filePath,
-    imageUrl: data.publicUrl,
-  };
-}
-
-async function setCoverImage(productId: string, imageFile: File) {
-  const uploadedImage = await uploadProductImage(imageFile);
-
-  await supabase
+async function getProductImagesCount(productId: string) {
+  const { count, error } = await supabase
     .from("product_images")
-    .update({ is_cover: false })
+    .select("id", { count: "exact", head: true })
     .eq("product_id", productId);
 
-  const { error: imageError } = await supabase.from("product_images").insert({
-    product_id: productId,
-    image_path: uploadedImage.imagePath,
-    image_url: uploadedImage.imageUrl,
-    position: 0,
-    is_cover: true,
-  });
+  if (error) {
+    throw new Error(error.message);
+  }
 
-  if (imageError) {
-    throw new Error(imageError.message);
+  return count ?? 0;
+}
+
+async function productHasCoverImage(productId: string) {
+  const { data, error } = await supabase
+    .from("product_images")
+    .select("id")
+    .eq("product_id", productId)
+    .eq("is_cover", true)
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).length > 0;
+}
+
+async function uploadProductImages(productId: string, files: File[]) {
+  if (files.length === 0) return;
+
+  const existingImagesCount = await getProductImagesCount(productId);
+  const hasCoverImage = await productHasCoverImage(productId);
+
+  const rowsToInsert = [];
+
+  for (let index = 0; index < files.length; index++) {
+    const file = files[index];
+
+    const fileExtension = file.name.split(".").pop();
+    const safeFileName = `${crypto.randomUUID()}.${fileExtension}`;
+    const imagePath = `${productId}/${safeFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .upload(imagePath, file);
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(imagePath);
+
+    rowsToInsert.push({
+      product_id: productId,
+      image_path: imagePath,
+      image_url: publicUrl,
+      position: existingImagesCount + index,
+      is_cover: !hasCoverImage && index === 0,
+    });
+  }
+
+  const { error: insertError } = await supabase
+    .from("product_images")
+    .insert(rowsToInsert);
+
+  if (insertError) {
+    throw new Error(insertError.message);
   }
 }
 
 export async function createProduct(
   input: ProductFormInput,
-  imageFile: File | null
+  imageFiles?: File | File[] | null
 ) {
-  const { data: product, error: productError } = await supabase
+  const { data: product, error } = await supabase
     .from("products")
     .insert({
       name: input.name,
@@ -227,21 +279,20 @@ export async function createProduct(
     .select("id")
     .single();
 
-  if (productError) {
-    throw new Error(productError.message);
+  if (error) {
+    throw new Error(error.message);
   }
 
-  if (imageFile) {
-    await setCoverImage(product.id, imageFile);
-  }
+  const files = normalizeImageFiles(imageFiles);
+  await uploadProductImages(product.id, files);
 
-  return product;
+  return product.id as string;
 }
 
 export async function updateProduct(
   productId: string,
   input: ProductFormInput,
-  imageFile: File | null
+  imageFiles?: File | File[] | null
 ) {
   const { error } = await supabase
     .from("products")
@@ -261,12 +312,14 @@ export async function updateProduct(
     throw new Error(error.message);
   }
 
-  if (imageFile) {
-    await setCoverImage(productId, imageFile);
-  }
+  const files = normalizeImageFiles(imageFiles);
+  await uploadProductImages(productId, files);
 }
 
-export async function toggleProductActive(productId: string, active: boolean) {
+export async function toggleProductActive(
+  productId: string,
+  active: boolean
+) {
   const { error } = await supabase
     .from("products")
     .update({ active })
@@ -278,9 +331,105 @@ export async function toggleProductActive(productId: string, active: boolean) {
 }
 
 export async function deleteProduct(productId: string) {
-  const { error } = await supabase.from("products").delete().eq("id", productId);
+  const { data: images, error: imagesError } = await supabase
+    .from("product_images")
+    .select("image_path")
+    .eq("product_id", productId);
+
+  if (imagesError) {
+    throw new Error(imagesError.message);
+  }
+
+  const imagePaths = (images ?? []).map((image) => image.image_path);
+
+  if (imagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .remove(imagePaths);
+
+    if (storageError) {
+      throw new Error(storageError.message);
+    }
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", productId);
 
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function setProductCoverImage(
+  productId: string,
+  imageId: string
+) {
+  const { error: resetError } = await supabase
+    .from("product_images")
+    .update({ is_cover: false })
+    .eq("product_id", productId);
+
+  if (resetError) {
+    throw new Error(resetError.message);
+  }
+
+  const { error: coverError } = await supabase
+    .from("product_images")
+    .update({ is_cover: true })
+    .eq("id", imageId)
+    .eq("product_id", productId);
+
+  if (coverError) {
+    throw new Error(coverError.message);
+  }
+}
+
+async function setFirstImageAsCoverIfNeeded(productId: string) {
+  const hasCover = await productHasCoverImage(productId);
+
+  if (hasCover) return;
+
+  const { data: firstImage, error } = await supabase
+    .from("product_images")
+    .select("id")
+    .eq("product_id", productId)
+    .order("position", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!firstImage) return;
+
+  await setProductCoverImage(productId, firstImage.id);
+}
+
+export async function deleteProductImage(
+  productId: string,
+  imageId: string,
+  imagePath: string
+) {
+  const { error: storageError } = await supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .remove([imagePath]);
+
+  if (storageError) {
+    throw new Error(storageError.message);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("product_images")
+    .delete()
+    .eq("id", imageId)
+    .eq("product_id", productId);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  await setFirstImageAsCoverIfNeeded(productId);
 }

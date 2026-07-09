@@ -6,6 +6,8 @@ export function Cart() {
   const items = useCartStore((state) => state.items);
   const removeFromCart = useCartStore((state) => state.removeFromCart);
   const clearCart = useCartStore((state) => state.clearCart);
+  const increaseQuantity = useCartStore((state) => state.increaseQuantity);
+  const decreaseQuantity = useCartStore((state) => state.decreaseQuantity);
   const totalPrice = useCartStore((state) => state.getTotalPrice());
 
   const [fullName, setFullName] = useState("");
@@ -111,7 +113,10 @@ Nro. de consulta: ${inquiryId}`;
       const finalMessage = buildWhatsAppMessage(inquiryId);
       const encodedMessage = encodeURIComponent(finalMessage);
 
-      window.open(`https://wa.me/${sellerPhone}?text=${encodedMessage}`, "_blank");
+      window.open(
+        `https://wa.me/${sellerPhone}?text=${encodedMessage}`,
+        "_blank"
+      );
 
       setSuccessMessage("Consulta registrada correctamente.");
 
@@ -167,13 +172,40 @@ Nro. de consulta: ${inquiryId}`;
 
               <div className="cart-item-info">
                 <h2>{item.name}</h2>
-                <p>Cantidad: {item.quantity}</p>
+
+                <div className="cart-quantity-row">
+                  <span>Cantidad</span>
+
+                  <div className="quantity-control">
+                    <button
+                      type="button"
+                      onClick={() => decreaseQuantity(item.id)}
+                      aria-label="Disminuir cantidad"
+                    >
+                      -
+                    </button>
+
+                    <strong>{item.quantity}</strong>
+
+                    <button
+                      type="button"
+                      onClick={() => increaseQuantity(item.id)}
+                      disabled={item.quantity >= item.stock}
+                      aria-label="Aumentar cantidad"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
                 <p>
                   Subtotal: $
                   {(item.price * item.quantity).toLocaleString("es-AR")}
                 </p>
 
-                <button onClick={() => removeFromCart(item.id)}>Quitar</button>
+                <button type="button" onClick={() => removeFromCart(item.id)}>
+                  Quitar
+                </button>
               </div>
             </article>
           ))}
@@ -228,6 +260,7 @@ Nro. de consulta: ${inquiryId}`;
           </div>
 
           <button
+            type="button"
             className="primary-button"
             onClick={handleWhatsAppInquiry}
             disabled={sending}
@@ -236,6 +269,7 @@ Nro. de consulta: ${inquiryId}`;
           </button>
 
           <button
+            type="button"
             className="secondary-button"
             onClick={clearCart}
             disabled={sending}
@@ -243,7 +277,7 @@ Nro. de consulta: ${inquiryId}`;
             Vaciar carrito
           </button>
 
-          <button className="disabled-payment-button" disabled>
+          <button type="button" className="disabled-payment-button" disabled>
             Comprar con Mercado Pago próximamente
           </button>
         </aside>

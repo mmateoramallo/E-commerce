@@ -7,6 +7,8 @@ import { Cart } from "./pages/Cart";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminProducts } from "./pages/AdminProducts";
 
+import { AdminInquiries } from "./pages/AdminInquiries";
+
 function App() {
   return (
     <>
@@ -24,6 +26,14 @@ function App() {
             element={
               <ProtectedAdminRoute>
                 <AdminProducts />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/consultas"
+            element={
+              <ProtectedAdminRoute>
+                <AdminInquiries />
               </ProtectedAdminRoute>
             }
           />

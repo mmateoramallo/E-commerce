@@ -1,3 +1,12 @@
+export type ProductImage = {
+  id: string;
+  productId: string;
+  imagePath: string;
+  imageUrl: string;
+  position: number;
+  isCover: boolean;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -9,4 +18,5 @@ export type Product = {
   dimensions: string;
   stock: number;
   imageUrl: string;
+  images: ProductImage[];
 };

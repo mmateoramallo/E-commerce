@@ -6,11 +6,14 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { AdminNav } from "../components/AdminNav";
 import {
   createProduct,
   deleteProduct,
+  deleteProductImage,
   getAdminProducts,
   getCategories,
+  setProductCoverImage,
   toggleProductActive,
   updateProduct,
 } from "../services/adminProductService";
@@ -31,6 +34,16 @@ type ProductFormState = {
   dimensions: string;
 };
 
+type AdminProductImageCarouselProps = {
+  product: AdminProduct;
+  onSetCoverImage: (productId: string, imageId: string) => Promise<void>;
+  onDeleteImage: (
+    productId: string,
+    imageId: string,
+    imagePath: string
+  ) => Promise<void>;
+};
+
 const emptyForm: ProductFormState = {
   name: "",
   description: "",
@@ -42,12 +55,126 @@ const emptyForm: ProductFormState = {
   dimensions: "",
 };
 
+function AdminProductImageCarousel({
+  product,
+  onSetCoverImage,
+  onDeleteImage,
+}: AdminProductImageCarouselProps) {
+  const coverIndex = useMemo(() => {
+    const foundIndex = product.images.findIndex((image) => image.isCover);
+    return foundIndex >= 0 ? foundIndex : 0;
+  }, [product.images]);
+
+  const [currentIndex, setCurrentIndex] = useState(coverIndex);
+
+  useEffect(() => {
+    setCurrentIndex(coverIndex);
+  }, [coverIndex, product.images.length]);
+
+  if (product.images.length === 0) {
+    return (
+      <div className="admin-product-gallery">
+        <h5>Imágenes</h5>
+        <p>Este producto todavía no tiene imágenes.</p>
+      </div>
+    );
+  }
+
+  const safeCurrentIndex = Math.min(currentIndex, product.images.length - 1);
+  const currentImage = product.images[safeCurrentIndex];
+
+  async function goToImage(nextIndex: number) {
+    const totalImages = product.images.length;
+    const normalizedIndex = (nextIndex + totalImages) % totalImages;
+    const selectedImage = product.images[normalizedIndex];
+
+    setCurrentIndex(normalizedIndex);
+
+    if (!selectedImage.isCover) {
+      await onSetCoverImage(product.id, selectedImage.id);
+    }
+  }
+
+  return (
+    <div className="admin-product-gallery">
+      <div className="admin-gallery-header">
+        <h5>Imágenes</h5>
+        <span>
+          {safeCurrentIndex + 1} / {product.images.length}
+        </span>
+      </div>
+
+      <div className="admin-image-carousel">
+        {product.images.length > 1 && (
+          <button
+            type="button"
+            className="carousel-arrow"
+            onClick={() => goToImage(safeCurrentIndex - 1)}
+            aria-label="Imagen anterior"
+          >
+            ‹
+          </button>
+        )}
+
+        <div className="admin-carousel-image">
+          <img src={currentImage.imageUrl} alt={product.name} />
+
+          {currentImage.isCover && (
+            <span className="carousel-cover-badge">Principal</span>
+          )}
+
+          <button
+            type="button"
+            className="carousel-delete-button"
+            onClick={() =>
+              onDeleteImage(product.id, currentImage.id, currentImage.imagePath)
+            }
+            aria-label="Eliminar imagen"
+            title="Eliminar imagen"
+          >
+            ×
+          </button>
+        </div>
+
+        {product.images.length > 1 && (
+          <button
+            type="button"
+            className="carousel-arrow"
+            onClick={() => goToImage(safeCurrentIndex + 1)}
+            aria-label="Imagen siguiente"
+          >
+            ›
+          </button>
+        )}
+      </div>
+
+      {product.images.length > 1 && (
+        <div className="admin-carousel-dots">
+          {product.images.map((image, index) => (
+            <button
+              key={image.id}
+              type="button"
+              className={
+                index === safeCurrentIndex
+                  ? "carousel-dot active"
+                  : "carousel-dot"
+              }
+              onClick={() => goToImage(index)}
+              aria-label={`Ver imagen ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AdminProducts() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
 
   const [form, setForm] = useState<ProductFormState>(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(
     null
   );
@@ -144,13 +271,13 @@ export function AdminProducts() {
     }));
   }
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    setImageFile(file);
+  function handleImagesChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    setImageFiles(files);
   }
 
   function resetImageInput() {
-    setImageFile(null);
+    setImageFiles([]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -173,9 +300,11 @@ export function AdminProducts() {
   function validateForm() {
     if (!form.name.trim()) return "Ingresá el nombre del producto.";
     if (!form.description.trim()) return "Ingresá una descripción.";
+
     if (!form.price || Number(form.price) < 0) {
       return "Ingresá un precio válido.";
     }
+
     if (!form.stock || Number(form.stock) < 0) {
       return "Ingresá un stock válido.";
     }
@@ -205,10 +334,10 @@ export function AdminProducts() {
       const input = buildProductInput();
 
       if (editingProduct) {
-        await updateProduct(editingProduct.id, input, imageFile);
+        await updateProduct(editingProduct.id, input, imageFiles);
         setMessage("Producto actualizado correctamente.");
       } else {
-        await createProduct(input, imageFile);
+        await createProduct(input, imageFiles);
         setMessage("Producto creado correctamente.");
       }
 
@@ -298,6 +427,38 @@ export function AdminProducts() {
     }
   }
 
+  async function handleSetCoverImage(productId: string, imageId: string) {
+    try {
+      await setProductCoverImage(productId, imageId);
+      await refreshProducts();
+      setMessage("Imagen principal actualizada.");
+    } catch (error) {
+      console.error(error);
+      setMessage("No se pudo marcar la imagen como principal.");
+    }
+  }
+
+  async function handleDeleteProductImage(
+    productId: string,
+    imageId: string,
+    imagePath: string
+  ) {
+    const confirmed = window.confirm(
+      "¿Seguro que querés eliminar esta imagen?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteProductImage(productId, imageId, imagePath);
+      await refreshProducts();
+      setMessage("Imagen eliminada correctamente.");
+    } catch (error) {
+      console.error(error);
+      setMessage("No se pudo eliminar la imagen.");
+    }
+  }
+
   return (
     <section className="admin-page">
       <header className="admin-topbar">
@@ -307,6 +468,8 @@ export function AdminProducts() {
           <p>Gestioná el catálogo, editá productos y controlá su visibilidad.</p>
         </div>
       </header>
+
+      <AdminNav />
 
       <div className="admin-stats">
         <article>
@@ -337,8 +500,8 @@ export function AdminProducts() {
               <h2>{editingProduct ? "Editar producto" : "Crear producto"}</h2>
               <p>
                 {editingProduct
-                  ? "Modificá los datos del producto seleccionado."
-                  : "Cargá un nuevo producto para mostrarlo en el catálogo."}
+                  ? "Modificá los datos del producto seleccionado y agregá nuevas imágenes."
+                  : "Cargá un nuevo producto con una o varias imágenes."}
               </p>
             </div>
 
@@ -355,7 +518,12 @@ export function AdminProducts() {
 
           {editingProduct && (
             <div className="editing-preview">
-              <img src={editingProduct.imageUrl} alt={editingProduct.name} />
+              {editingProduct.imageUrl ? (
+                <img src={editingProduct.imageUrl} alt={editingProduct.name} />
+              ) : (
+                <div className="editing-preview-placeholder">Sin imagen</div>
+              )}
+
               <div>
                 <span>Editando</span>
                 <strong>{editingProduct.name}</strong>
@@ -458,9 +626,7 @@ export function AdminProducts() {
 
             <div className="file-field">
               <span className="file-field-label">
-                {editingProduct
-                  ? "Reemplazar imagen principal"
-                  : "Imagen principal"}
+                {editingProduct ? "Agregar imágenes" : "Imágenes del producto"}
               </span>
 
               <label className="file-upload-box">
@@ -468,17 +634,30 @@ export function AdminProducts() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handleImageChange}
+                  multiple
+                  onChange={handleImagesChange}
                 />
 
-                <span className="file-upload-button">Seleccionar imagen</span>
+                <span className="file-upload-button">Seleccionar imágenes</span>
 
                 <span className="file-upload-text">
-                  {imageFile
-                    ? imageFile.name
+                  {imageFiles.length > 0
+                    ? `${imageFiles.length} imagen${
+                        imageFiles.length === 1 ? "" : "es"
+                      } seleccionada${imageFiles.length === 1 ? "" : "s"}`
                     : "Ningún archivo seleccionado"}
                 </span>
               </label>
+
+              {imageFiles.length > 0 && (
+                <div className="selected-images-list">
+                  {imageFiles.map((file) => (
+                    <span key={`${file.name}-${file.lastModified}`}>
+                      {file.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {message && <p className="admin-message">{message}</p>}
@@ -534,7 +713,13 @@ export function AdminProducts() {
                     {items.map((product) => (
                       <article key={product.id} className="admin-product-card">
                         <div className="admin-product-image">
-                          <img src={product.imageUrl} alt={product.name} />
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name} />
+                          ) : (
+                            <div className="admin-product-image-placeholder">
+                              Sin imagen
+                            </div>
+                          )}
 
                           <span
                             className={
@@ -576,16 +761,29 @@ export function AdminProducts() {
                             )}
                           </div>
 
+                          <AdminProductImageCarousel
+                            product={product}
+                            onSetCoverImage={handleSetCoverImage}
+                            onDeleteImage={handleDeleteProductImage}
+                          />
+
                           <div className="admin-product-actions">
-                            <button onClick={() => handleEditProduct(product)}>
+                            <button
+                              type="button"
+                              onClick={() => handleEditProduct(product)}
+                            >
                               Editar
                             </button>
 
-                            <button onClick={() => handleToggleActive(product)}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActive(product)}
+                            >
                               {product.active ? "Desactivar" : "Activar"}
                             </button>
 
                             <button
+                              type="button"
                               className="danger-button"
                               onClick={() => handleDeleteProduct(product.id)}
                             >
