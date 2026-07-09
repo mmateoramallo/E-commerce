@@ -6,8 +6,8 @@ import { ProductDetail } from "./pages/ProductDetail";
 import { Cart } from "./pages/Cart";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminProducts } from "./pages/AdminProducts";
-
 import { AdminInquiries } from "./pages/AdminInquiries";
+import { AdminCategories } from "./pages/AdminCategories";
 
 function App() {
   return (
@@ -34,6 +34,14 @@ function App() {
             element={
               <ProtectedAdminRoute>
                 <AdminInquiries />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/categorias"
+            element={
+              <ProtectedAdminRoute>
+                <AdminCategories />
               </ProtectedAdminRoute>
             }
           />
