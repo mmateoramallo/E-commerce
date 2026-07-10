@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCartStore } from "../store/cartStore";
 import { createInquiryFromCart } from "../services/inquiryService";
+import { createPaymentFromCart } from "../services/paymentService";
 
 export function Cart() {
   const items = useCartStore((state) => state.items);
@@ -18,6 +19,7 @@ export function Cart() {
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const sellerPhone = import.meta.env.VITE_SELLER_WHATSAPP ?? "5493511234567";
 
@@ -135,6 +137,44 @@ Nro. de consulta: ${inquiryId}`;
     }
   }
 
+  async function handleMercadoPagoPayment() {
+    const validationError = validateForm();
+
+    if (validationError) {
+      setFormError(validationError);
+      setSuccessMessage("");
+      return;
+    }
+
+    try {
+      setPaying(true);
+      setFormError("");
+      setSuccessMessage("");
+
+      const payment = await createPaymentFromCart({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        comment: comment.trim(),
+        items: items.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+        })),
+      });
+
+      window.location.href = payment.checkoutUrl;
+    } catch (error) {
+      console.error(error);
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo iniciar el pago con Mercado Pago."
+      );
+    } finally {
+      setPaying(false);
+    }
+  }
+
   if (items.length === 0) {
     return (
       <section className="cart-page">
@@ -155,11 +195,11 @@ Nro. de consulta: ${inquiryId}`;
     <section className="cart-page">
       <div className="cart-header">
         <div>
-          <p className="eyebrow">Consulta</p>
+          <p className="eyebrow">Consulta o compra</p>
           <h1>Tu carrito</h1>
           <p>
-            Completá tus datos para registrar la consulta y enviarla por
-            WhatsApp.
+            Podés consultar por WhatsApp o iniciar una compra segura con Mercado
+            Pago.
           </p>
         </div>
       </div>
@@ -263,22 +303,27 @@ Nro. de consulta: ${inquiryId}`;
             type="button"
             className="primary-button"
             onClick={handleWhatsAppInquiry}
-            disabled={sending}
+            disabled={sending || paying}
           >
             {sending ? "Registrando consulta..." : "Enviar consulta por WhatsApp"}
           </button>
 
           <button
             type="button"
-            className="secondary-button"
-            onClick={clearCart}
-            disabled={sending}
+            className="mercado-pago-button"
+            onClick={handleMercadoPagoPayment}
+            disabled={sending || paying}
           >
-            Vaciar carrito
+            {paying ? "Creando pago..." : "Comprar con Mercado Pago"}
           </button>
 
-          <button type="button" className="disabled-payment-button" disabled>
-            Comprar con Mercado Pago próximamente
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={clearCart}
+            disabled={sending || paying}
+          >
+            Vaciar carrito
           </button>
         </aside>
       </div>
