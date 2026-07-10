@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
     if (!mercadoPagoAccessToken) {
       return jsonResponse(
         { error: "Falta configurar MERCADO_PAGO_ACCESS_TOKEN." },
-        500
+        500,
       );
     }
 
@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
           error:
             "Faltan credenciales internas de Supabase. Revisá SUPABASE_SERVICE_ROLE_KEY o SUPABASE_SECRET_KEY en Edge Function Secrets.",
         },
-        500
+        500,
       );
     }
 
@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
         customer_phone: body.phone?.trim() ?? "",
         customer_comment: body.comment?.trim() ?? "",
         cart_items: cartItems,
-      }
+      },
     );
 
     if (orderError) {
@@ -197,7 +197,7 @@ Deno.serve(async (req: Request) => {
           step: "create_order_with_reservation",
           detail: orderError,
         },
-        400
+        400,
       );
     }
 
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
           unit_price,
           subtotal
         )
-      `
+      `,
       )
       .eq("id", orderId)
       .single();
@@ -234,11 +234,15 @@ Deno.serve(async (req: Request) => {
           step: "fetch_order",
           detail: orderFetchError,
         },
-        500
+        500,
       );
     }
 
     const order = orderData as unknown as OrderRow;
+
+    const webhookUrl =
+      Deno.env.get("MERCADO_PAGO_WEBHOOK_URL") ??
+      `${supabaseUrl}/functions/v1/mercado-pago-webhook`;
 
     const preferencePayload: Record<string, unknown> = {
       items: order.order_items.map((item) => ({
@@ -249,6 +253,7 @@ Deno.serve(async (req: Request) => {
         currency_id: "ARS",
       })),
       external_reference: order.id,
+      notification_url: webhookUrl,
       metadata: {
         order_id: order.id,
         customer_full_name: order.full_name,
@@ -281,7 +286,7 @@ Deno.serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(preferencePayload),
-      }
+      },
     );
 
     const mercadoPagoData = await mercadoPagoResponse.json();
@@ -297,7 +302,7 @@ Deno.serve(async (req: Request) => {
           detail: mercadoPagoData,
           preferencePayload,
         },
-        400
+        400,
       );
     }
 
@@ -313,11 +318,12 @@ Deno.serve(async (req: Request) => {
 
       return jsonResponse(
         {
-          error: "La preferencia fue creada, pero no se pudo actualizar la orden.",
+          error:
+            "La preferencia fue creada, pero no se pudo actualizar la orden.",
           step: "update_order_preference",
           detail: updateOrderError,
         },
-        500
+        500,
       );
     }
 
@@ -337,7 +343,7 @@ Deno.serve(async (req: Request) => {
           step: "missing_checkout_url",
           detail: mercadoPagoData,
         },
-        500
+        500,
       );
     }
 
@@ -359,7 +365,7 @@ Deno.serve(async (req: Request) => {
             : "Error inesperado al crear el pago.",
         step: "unexpected_error",
       },
-      500
+      500,
     );
   }
 });
