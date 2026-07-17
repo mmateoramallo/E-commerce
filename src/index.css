@@ -1526,6 +1526,115 @@ select {
   padding: 13px 16px;
   font-weight: 800;
 }
+/* =========================================================
+   PAYMENT RESULT
+========================================================= */
+
+.payment-result-page {
+  min-height: calc(100vh - 90px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.payment-result-card {
+  width: 100%;
+  max-width: 680px;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: 34px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.payment-result-icon {
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: white;
+  font-size: 38px;
+  font-weight: 900;
+  margin-bottom: 18px;
+}
+
+.payment-result-card.success .payment-result-icon {
+  background: var(--color-success);
+}
+
+.payment-result-card.pending .payment-result-icon {
+  background: #8b5e34;
+}
+
+.payment-result-card.failure .payment-result-icon {
+  background: var(--color-danger);
+}
+
+.payment-result-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.payment-result-card p {
+  margin: 0;
+  color: var(--color-muted-light);
+  line-height: 1.5;
+}
+
+.payment-result-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 26px 0;
+  text-align: left;
+}
+
+.payment-result-details span {
+  background: var(--color-surface-soft);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--color-muted-light);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.payment-result-details strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-text);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.payment-result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primary-link-button,
+.secondary-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 13px 18px;
+  font-weight: 800;
+}
+
+.primary-link-button {
+  background: var(--color-text);
+  color: white;
+}
+
+.secondary-link-button {
+  background: #eeeeee;
+  color: var(--color-text);
+}
 
 /* =========================================================
    10. RESPONSIVE
@@ -1629,6 +1738,22 @@ select {
 
   .order-contact-grid {
     grid-template-columns: 1fr;
+  }
+  .payment-result-card {
+    padding: 26px 18px;
+  }
+
+  .payment-result-details {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-result-actions {
+    flex-direction: column;
+  }
+
+  .primary-link-button,
+  .secondary-link-button {
+    width: 100%;
   }
 }
 

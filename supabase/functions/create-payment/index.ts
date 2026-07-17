@@ -267,9 +267,9 @@ Deno.serve(async (req: Request) => {
 
     if (!isLocalUrl(appUrl)) {
       preferencePayload.back_urls = {
-        success: `${appUrl}/carrito?payment=success`,
-        failure: `${appUrl}/carrito?payment=failure`,
-        pending: `${appUrl}/carrito?payment=pending`,
+          success: `${appUrl}/pago-exitoso`,
+          failure: `${appUrl}/pago-rechazado`,
+          pending: `${appUrl}/pago-pendiente`,
       };
 
       preferencePayload.auto_return = "approved";

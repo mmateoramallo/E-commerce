@@ -9,6 +9,10 @@ import { AdminProducts } from "./pages/AdminProducts";
 import { AdminInquiries } from "./pages/AdminInquiries";
 import { AdminCategories } from "./pages/AdminCategories";
 import { AdminOrders } from "./pages/AdminOrders";
+import { PaymentSuccess } from "./pages/PaymentSuccess";
+import { PaymentPending } from "./pages/PaymentPending";
+import { PaymentFailure } from "./pages/PaymentFailure";
+
 
 function App() {
   return (
@@ -20,6 +24,10 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/producto/:id" element={<ProductDetail />} />
           <Route path="/carrito" element={<Cart />} />
+          <Route path="/pago-exitoso" element={<PaymentSuccess />} />
+          <Route path="/pago-pendiente" element={<PaymentPending />} />
+          <Route path="/pago-rechazado" element={<PaymentFailure />} />
+
           <Route path="/admin/login" element={<AdminLogin />} />
 
           <Route
@@ -54,6 +62,7 @@ function App() {
               </ProtectedAdminRoute>
             }
           />
+          
         </Routes>
       </main>
     </>
