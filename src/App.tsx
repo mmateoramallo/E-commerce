@@ -8,6 +8,7 @@ import { AdminLogin } from "./pages/AdminLogin";
 import { AdminProducts } from "./pages/AdminProducts";
 import { AdminInquiries } from "./pages/AdminInquiries";
 import { AdminCategories } from "./pages/AdminCategories";
+import { AdminOrders } from "./pages/AdminOrders";
 
 function App() {
   return (
@@ -42,6 +43,14 @@ function App() {
             element={
               <ProtectedAdminRoute>
                 <AdminCategories />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/ordenes"
+            element={
+              <ProtectedAdminRoute>
+                <AdminOrders />
               </ProtectedAdminRoute>
             }
           />

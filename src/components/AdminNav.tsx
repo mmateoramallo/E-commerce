@@ -29,6 +29,15 @@ export function AdminNav() {
       >
         Categorías
       </NavLink>
+
+      <NavLink
+        to="/admin/ordenes"
+        className={({ isActive }) =>
+          isActive ? "admin-nav-link active" : "admin-nav-link"
+        }
+      >
+        Órdenes
+      </NavLink>
     </nav>
   );
 }

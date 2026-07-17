@@ -1354,6 +1354,180 @@ select {
 }
 
 /* =========================================================
+   ADMIN ORDERS
+========================================================= */
+
+.admin-orders-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-order-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.order-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.order-admin-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.order-admin-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.order-admin-header h3 {
+  margin: 10px 0 8px;
+  font-size: 24px;
+}
+
+.order-admin-header p {
+  margin: 4px 0;
+  color: var(--color-muted-light);
+}
+
+.order-admin-total {
+  min-width: 150px;
+  background: var(--color-surface-soft);
+  border-radius: 16px;
+  padding: 14px;
+  text-align: right;
+}
+
+.order-admin-total span {
+  display: block;
+  color: var(--color-muted-light);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.order-admin-total strong {
+  font-size: 24px;
+}
+
+.order-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.order-status.pending_payment {
+  background: #8b5e34;
+}
+
+.order-status.paid {
+  background: var(--color-success);
+}
+
+.order-status.expired {
+  background: #888888;
+}
+
+.order-status.cancelled,
+.order-status.failed,
+.order-status.stock_problem {
+  background: var(--color-danger);
+}
+
+.order-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.order-contact-grid span {
+  background: #f7f7f7;
+  border-radius: 14px;
+  padding: 12px;
+  color: var(--color-muted-light);
+  font-size: 13px;
+}
+
+.order-contact-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--color-text);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.order-comment {
+  background: var(--color-surface-soft);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.order-comment span {
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.order-comment p {
+  margin: 6px 0 0;
+  color: var(--color-text);
+}
+
+.order-items {
+  border-top: 1px solid #eeeeee;
+  padding-top: 16px;
+}
+
+.order-items h4 {
+  margin: 0 0 10px;
+}
+
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.order-item-row:last-child {
+  border-bottom: none;
+}
+
+.order-admin-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.order-whatsapp-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f7a3f;
+  color: white;
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-weight: 800;
+}
+
+/* =========================================================
    10. RESPONSIVE
 ========================================================= */
 
@@ -1439,6 +1613,23 @@ select {
   .product-detail-specs {
     grid-template-columns: 1fr;
   }
+  .admin-order-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-admin-header {
+    flex-direction: column;
+  }
+
+  .order-admin-total {
+    width: 100%;
+    text-align: left;
+  }
+
+  .order-contact-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
@@ -1474,7 +1665,7 @@ select {
     flex-direction: column;
   }
 
-    .category-admin-card {
+  .category-admin-card {
     flex-direction: column;
   }
 
@@ -1701,7 +1892,6 @@ select {
   min-width: 24px;
   text-align: center;
 }
-
 
 /* =========================================================
    nuevo carrousel imagenes admin
